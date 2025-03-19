@@ -69,7 +69,7 @@ Product name identifies the assimilated observation data made by observation thi
 ## 2-3 Compiling
 
 	$ cd ${CLDIR}/speedy-climax/300_letkf
-	$ singularity run --bind /data02,/data10 ../share/oneapi-hpckit_latest.sif
+	$ singularity run ../share/oneapi-hpckit_latest.sif
 	$ sh 200_make_letkf-climax.sh
 	$ sh 201_make_obsopeMPI-climax.sh
 	$ sh 202_make_ensmean-climax.sh
