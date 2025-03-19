@@ -1,0 +1,21 @@
+&climax_param
+  adate         = 2017010100,
+  bdate         = 2017010100,
+  sdate         = 2017010100,
+  edate         = 2017063018,
+  pdate         = 2017060100,
+  qdate         = 2017063018,
+  nbv           = 20,
+  nrunme        = 28, 
+  natdir        = '/data10/kotsuki/climax-letkf/SYS20240802_SPEEDY-ClimaX_LETKFv1.03/speedy-climax/DATA/weatherbc/'
+  expdir        = '/data10/kotsuki/climax-letkf/SYS20240802_SPEEDY-ClimaX_LETKFv1.03/speedy-climax/DATA/raob_wb/SYS20240804_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM/gues',
+  outtime_me    = '/data10/kotsuki/climax-letkf/SYS20240802_SPEEDY-ClimaX_LETKFv1.03/speedy-climax/DATA/raob_wb/SYS20240804_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM/out/gues_rmse_time_raob_wb_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM.txt',
+  outtime_sp    = '/data10/kotsuki/climax-letkf/SYS20240802_SPEEDY-ClimaX_LETKFv1.03/speedy-climax/DATA/raob_wb/SYS20240804_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM/out/gues_sprd_time_raob_wb_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM.txt',
+  outtrun_me    = '/data10/kotsuki/climax-letkf/SYS20240802_SPEEDY-ClimaX_LETKFv1.03/speedy-climax/DATA/raob_wb/SYS20240804_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM/out/gues_rmse_trun_raob_wb_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM.txt',
+  outtrun_sp    = '/data10/kotsuki/climax-letkf/SYS20240802_SPEEDY-ClimaX_LETKFv1.03/speedy-climax/DATA/raob_wb/SYS20240804_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM/out/gues_sprd_trun_raob_wb_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM.txt',
+  outtave_me    = '/data10/kotsuki/climax-letkf/SYS20240802_SPEEDY-ClimaX_LETKFv1.03/speedy-climax/DATA/raob_wb/SYS20240804_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM/out/gues_rmse_tave_raob_wb_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM_SMP2017060100-2017063018.txt',
+  outtave_sp    = '/data10/kotsuki/climax-letkf/SYS20240802_SPEEDY-ClimaX_LETKFv1.03/speedy-climax/DATA/raob_wb/SYS20240804_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM/out/gues_sprd_tave_raob_wb_CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM_SMP2017060100-2017063018.txt',
+  expname       = 'CLIMAX-0LETKF_M000020L0800IADP_RTPx0.00_woWSM',
+  obsname       = 'raob_wb'
+  cloc          = '0800',
+/
