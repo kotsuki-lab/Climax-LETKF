@@ -1,0 +1,300 @@
+# /data10/kshiraishi/letkfX/predict_v3.py
+import os
+ 
+import numpy as np
+import torch
+from torchvision.transforms import transforms
+
+import click
+
+from datetime import datetime, timedelta
+
+import time
+
+import re
+
+from climax.arch import ClimaX
+from climax.arch_res import ClimaX as ClimaXRes
+from climax.utils.pos_embed import interpolate_pos_embed
+
+
+DEFAULT_VARS = [
+    "u_component_of_wind_925",
+    "u_component_of_wind_850",
+    "u_component_of_wind_700",
+    "u_component_of_wind_600",
+    "u_component_of_wind_500",
+    "u_component_of_wind_250",
+    "u_component_of_wind_50",
+    "v_component_of_wind_925",
+    "v_component_of_wind_850",
+    "v_component_of_wind_700",
+    "v_component_of_wind_600",
+    "v_component_of_wind_500",
+    "v_component_of_wind_250",
+    "v_component_of_wind_50",
+    "temperature_925",
+    "temperature_850",
+    "temperature_700",
+    "temperature_600",
+    "temperature_500",
+    "temperature_250",
+    "temperature_50",
+    "specific_humidity_925",
+    "specific_humidity_850",
+    "specific_humidity_700",
+    "specific_humidity_600",
+    "specific_humidity_500",
+    "specific_humidity_250",
+    "specific_humidity_50",
+    "geopotential_925",
+    "geopotential_850",
+    "geopotential_700",
+    "geopotential_600",
+    "geopotential_500",
+    "geopotential_250",
+    "geopotential_50",
+    "2m_temperature",
+    "10m_u_component_of_wind",
+    "10m_v_component_of_wind",
+    "land_sea_mask",
+    "orography",
+    "lattitude",
+]
+
+OUTPUT_VARS = [
+    "u_component_of_wind_925",
+    "u_component_of_wind_850",
+    "u_component_of_wind_700",
+    "u_component_of_wind_600",
+    "u_component_of_wind_500",
+    "u_component_of_wind_250",
+    "u_component_of_wind_50",
+    "v_component_of_wind_925",
+    "v_component_of_wind_850",
+    "v_component_of_wind_700",
+    "v_component_of_wind_600",
+    "v_component_of_wind_500",
+    "v_component_of_wind_250",
+    "v_component_of_wind_50",
+    "temperature_925",
+    "temperature_850",
+    "temperature_700",
+    "temperature_600",
+    "temperature_500",
+    "temperature_250",
+    "temperature_50",
+    "specific_humidity_925",
+    "specific_humidity_850",
+    "specific_humidity_700",
+    "specific_humidity_600",
+    "specific_humidity_500",
+    "specific_humidity_250",
+    "specific_humidity_50",
+    "geopotential_925",
+    "geopotential_850",
+    "geopotential_700",
+    "geopotential_600",
+    "geopotential_500",
+    "geopotential_250",
+    "geopotential_50",
+    "2m_temperature",
+    "10m_u_component_of_wind",
+    "10m_v_component_of_wind",
+]
+
+def parse_ids(ctx, param, value):
+    ids = []
+    first_id_length = None
+
+    for part in value.split(','):
+        if '-' in part:
+            start, end = part.split('-')
+            if first_id_length is None:
+                first_id_length = len(start)
+            start, end = int(start), int(end)
+            ids.extend([f"{i:0{first_id_length}d}" for i in range(start, end + 1)])
+        else:
+            if first_id_length is None:
+                first_id_length = len(part)
+            ids.append(f"{int(part):0{first_id_length}d}")
+    return ids
+
+@click.command()
+@click.option("--anal_dir", type=click.Path(exists=True), default="data/anal")
+@click.option("--gues_dir", type=click.Path(exists=False), default="data/gues")
+@click.option("--member_ids", type=str, callback=parse_ids, default="000000")
+@click.option("--date_time", type=str, default="2006010100")
+@click.option("--lead_time", type=int, default=6)
+@click.option("--model_dir", type=click.Path(exists=True), default="models")
+@click.option("--batch_size", type=int, default=50)
+@click.option("--loop", type=int, default=1)
+def main(
+    anal_dir,
+    gues_dir,
+    member_ids,
+    date_time,
+    lead_time,
+    model_dir,
+    batch_size,
+    loop
+):
+    print("loading model", end=" ")
+    start_time = time.time()
+    # net = ClimaX(default_vars=DEFAULT_VARS)
+    # trained_path = os.path.join(model_dir, f"climax_lt_{lead_time}.ckpt")
+    model_files = os.listdir(model_dir)
+    matched_files = [f for f in model_files if f.startswith(f"climax_lt_{lead_time}") and f.endswith(".ckpt")]
+    if len(matched_files) == 1:
+        trained_path = os.path.join(model_dir, matched_files[0])
+    else:
+        raise ValueError(f"Multiple or no matched files found: {matched_files}")
+    pattern = re.compile(r"climax_lt_(\d+)(.*?).ckpt")
+    match = pattern.match(matched_files[0])
+    suffix = match.group(2)
+    if suffix != "":
+        suffix = suffix[1:]
+
+    if suffix == "residual":
+        net = ClimaXRes(default_vars=DEFAULT_VARS)
+        print("(residual)...", end=" ")
+    else:
+        net = ClimaX(default_vars=DEFAULT_VARS)
+        print("...", end=" ")
+
+    checkpoint = torch.load(trained_path, map_location=torch.device("cpu"))
+    checkpoint_model = checkpoint["state_dict"]
+    interpolate_pos_embed(net, checkpoint_model, new_size=(32, 64))
+    state_dict = net.state_dict()
+
+    for k in list(checkpoint_model.keys()):
+        if "net.climax." in k:
+            checkpoint_model[k.replace("net.climax.", "")] = checkpoint_model[k]
+        else:
+            checkpoint_model[k.replace("net.", "")] = checkpoint_model[k]
+        del checkpoint_model[k]
+    for k in list(checkpoint_model.keys()):
+        if "channel" in k:
+            checkpoint_model[k.replace("channel", "var")] = checkpoint_model[k]
+            del checkpoint_model[k]
+    for k in list(checkpoint_model.keys()):
+        if k not in state_dict.keys() or checkpoint_model[k].shape != state_dict[k].shape:
+            del checkpoint_model[k]
+
+    missing_keys, unexpected_keys = net.load_state_dict(checkpoint_model, strict=False)
+    if len(missing_keys) > 0 or len(unexpected_keys) > 0:
+        raise ValueError(f"Missing keys: {missing_keys}\nUnexpected keys: {unexpected_keys}")
+
+    print(f"done ({time.time() - start_time:.2f}s)")
+    print()
+
+    for step in range(loop):
+
+        pred_time = time.time()
+        print(f"[step {step+1}/{loop}]")
+        print(f"predicting", end=" ")
+        x_list = []
+        constants = np.fromfile("constants.grd", dtype=">f4")
+        constants = constants.reshape(1, 4, 32, 64)
+        constants = constants[:, :-1, :, :]
+        for member_id in member_ids:
+            if step == 0:
+                filename = os.path.join(anal_dir, member_id, f"{date_time}.grd")
+            else:
+                filename = os.path.join(gues_dir, member_id, f"{date_time}.grd")
+            x = np.fromfile(filename, dtype=">f4")
+            x = x.reshape(1, len(DEFAULT_VARS)-2, 32, 64)
+            x = x[:, :-1, :, :]
+            x = np.concatenate([x, constants], axis=1)
+            x_list.append(x)
+        x = np.concatenate(x_list, axis=0)
+
+        mean_path = "normalize_mean.npz"
+        std_path = "normalize_std.npz"
+        normalize_mean = dict(np.load(mean_path))
+        normalize_std = dict(np.load(std_path))
+        normalize_mean = np.concatenate([normalize_mean[var] for var in DEFAULT_VARS])
+        normalize_std = np.concatenate([normalize_std[var] for var in DEFAULT_VARS])
+        normalize = transforms.Normalize(normalize_mean, normalize_std)
+        x = normalize(torch.tensor(x, dtype=torch.float32))
+        denomalize = transforms.Normalize(-normalize_mean / normalize_std, 1 / normalize_std)
+
+        net.eval()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        lead_time = torch.tensor([lead_time], dtype=torch.float32)
+        x = x.to(device)
+        net = net.to(device)
+        lead_time = lead_time.to(device)
+        if torch.cuda.is_available():
+            print("on GPU...", end=" ")
+            _, preds = net(x, x, lead_time, DEFAULT_VARS, OUTPUT_VARS, None, 0.0)
+        else:
+            print("on CPU...", end=" ")
+            batches = torch.split(x, batch_size, dim=0)
+            x = None
+
+            for batch in batches:
+                _, preds_batch = net(batch, batch, lead_time, DEFAULT_VARS, OUTPUT_VARS, None, 0.0)
+                if "preds" not in locals():
+                    preds = preds_batch
+                else:
+                    print(preds.shape, preds_batch.shape)
+                    preds = torch.cat([preds, preds_batch], dim=0)
+        
+        print(f"done ({time.time() - pred_time:.2f}s)")
+
+        save_time = time.time()
+        print(f"saving...", end=" ")
+
+        preds = preds.to("cpu")
+    
+        constants = np.fromfile("constants.grd", dtype=">f4")
+        constants = constants.reshape(4, 32, 64)
+        constants = constants[:-1, :, :]
+        constants = constants.byteswap().newbyteorder()
+        constants = torch.tensor(constants, dtype=torch.float32)
+        add_constants = torch.zeros(1, 3, 32, 64)
+        pred_date_time = datetime.strptime(date_time, "%Y%m%d%H") + timedelta(hours=lead_time.cpu().numpy().item())
+        date_time = pred_date_time.strftime("%Y%m%d%H")
+        preds_list = []
+        for i in range(len(member_ids)):
+            preds_list.append(preds[i:i+1, :len(OUTPUT_VARS), :, :])
+        for idx, preds in enumerate(preds_list):
+            preds = torch.cat([preds, add_constants], dim=1)
+            preds = denomalize(preds)
+            preds = preds[0, :len(OUTPUT_VARS), :, :]
+
+            preds_con = torch.cat([preds, constants], dim=0)
+            preds_con = preds_con.squeeze(0).detach().numpy()
+            preds_dict = dict()
+            for i in range(len(DEFAULT_VARS)):
+                preds_dict[DEFAULT_VARS[i]] = preds_con[i, :, :]
+
+            surface_pressure = np.zeros((1, 32, 64))
+            g = 9.81
+            M = 0.0289644
+            R = 8.314
+            levels = [925, 850, 700, 600, 500, 250, 50]
+
+            for i in range(64):
+                for j in range(32):
+                    for k in range(7):
+                        gph = preds_dict[f'geopotential_{levels[k]}'][j, i] / g
+                        if gph > preds_dict["orography"][j, i]:
+                            surface_pressure[0, j, i] = levels[k]*100*np.exp(- g * M * (preds_dict["orography"][j, i] - gph) / (R * preds_dict[f"temperature_{levels[k]}"][j, i]))
+                            break
+            
+            preds = preds.squeeze(0).detach().numpy()
+            preds = np.concatenate([preds[:len(OUTPUT_VARS), :, :], surface_pressure], axis=0)
+            
+            save_dir = os.path.join(gues_dir, member_ids[idx])
+            os.makedirs(save_dir, exist_ok=True)
+            preds.astype(np.float32).byteswap().newbyteorder().tofile(os.path.join(save_dir, f"{date_time}.grd"))
+        del preds
+
+        print(f"done ({time.time() - save_time:.2f}s)")
+        print()
+    print(f"all process done ({time.time() - start_time:.2f}s)")
+
+if __name__ == "__main__":
+    main()

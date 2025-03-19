@@ -1,0 +1,33 @@
+basedir="/export/home/kotsuki/climax-letkf/SYS20250109_SPEEDY-ClimaX_LETKFv1.11/speedy-climax/DATA/raob_wb/" 
+****
+imem=1 ; while(imem<=1)
+  if(imem=1); cmem="M000016" ; endif
+
+iobs=1 ; while(iobs<=1)
+  if(iobs=1); cobs="raob" ; endif
+
+  cloc=Lxxxx
+  if(imem=1&iobs=1) ; cloc="L0700" ; endif 
+
+iexp=2 ; while(iexp<=2)
+  cexp="0"iexp 
+*******************************************************************************************************************************
+   EXP1DIR=basedir "V240930_CLIMAXint-0LETKF_M000020L0600_inf-1.01_RTPx0.00_ad0.00_po0.00"
+   EXP2DIR=basedir "V240930_CLIMAXdef-0LETKF_M000020L0600_inf-1.01_RTPx0.00_ad0.00_po0.00"
+*******************************************************************************************************************************
+
+  '!rm exp1dir exp2dir'
+  '!ln -s  'EXP1DIR'  exp1dir'
+  '!ln -s  'EXP2DIR'  exp2dir'
+
+  'subdraw_time_rmse_2exp.gs'
+  '!mv ./PNGfile/time_rmse.png ./EXP2figs/time_rmse_'EXPNAM'.png'
+
+*  'subdraw_gmap_rmse-comp_2exp.gs'
+*  '!mv ./PNGfile/gmap_rmse.png ./EXP2figs/gmap_rmse_comp_'EXPNAM'.png'
+
+iexp=iexp+1  ;  endwhile
+iobs=iobs+1  ;  endwhile
+imem=imem+1  ;  endwhile
+
+return
